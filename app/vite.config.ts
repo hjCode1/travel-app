@@ -11,7 +11,14 @@ export default defineConfig({
     vue(),
     AutoImport({
       dts: true,
-      imports: ['vue', 'vue-router', '@vueuse/core'],
+      imports: [
+        'vue',
+        'vue-router',
+        '@vueuse/core',
+        {
+          '@tanstack/vue-query': ['useQuery'],
+        },
+      ],
       dirs: ['./src/composables', './src/composables/**'],
       vueTemplate: false,
     }),

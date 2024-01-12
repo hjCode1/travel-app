@@ -13,7 +13,7 @@ for (const img in imageModules) {
 }
 
 const locale: Locale[] = [
-  { seoul: '대한민국', code: 'KWR' },
+  { seoul: '대한민국', code: 'KRW' },
   { bern: '스위스', code: 'EUR' },
   { beijing: '중국', code: 'CNY' },
   { prague: '체코', code: 'EUR' },
@@ -43,14 +43,40 @@ const matchedLocales = images
     }
   })
   .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+
+const fetchEnable = ref(false)
+const url = `http://data.fixer.io/api/latest?access_key=adf51f266ba9950332b89cdf237fbe58`
+
+const {
+  isLoading,
+  data: rates,
+  error,
+} = useQuery({
+  queryKey: ['locale'],
+  queryFn: async () => {
+    const { data } = await useFetch(url)
+    // console.log('awiat', data)
+    const exchangeRates = useExchangeRates(JSON.parse(data.value).rates, 'KRW', 1000)
+    // console.log('?', exchangeRates)
+    const toFixedExchangeRates = Object.fromEntries(
+      Object.entries(exchangeRates).map(([key, value]) => [key, parseFloat(value.toFixed(2))])
+    )
+    return toFixedExchangeRates
+  },
+  staleTime: Infinity,
+  // enabled: fetchEnable
+})
+
+console.log(matchedLocales)
 </script>
 
 <template>
-  <div class="container locale">
+  <Loading v-if="isLoading" />
+  <div v-if="!isLoading" class="container locale">
     <ul>
       <li class="locale--card" v-for="item of matchedLocales" :key="item.img">
         <strong class="locale--title">{{ item.name }}</strong>
-        <span class="locale--money"></span>
+        <span class="locale--money">{{ rates[item.code] }}</span>
         <img class="locale--img" :src="item.img" alt="" />
       </li>
     </ul>
@@ -68,7 +94,9 @@ const matchedLocales = images
     position: relative;
     width: 100%;
     height: 200px;
+    cursor: pointer;
     overflow: hidden;
+
     &:after {
       content: '';
       position: absolute;
@@ -77,8 +105,8 @@ const matchedLocales = images
       left: 0;
       right: 0;
       width: 100%;
-      height: 50%;
-      background: linear-gradient(180deg, rgba(51, 51, 51, 1) 0%, rgba(0, 164, 255, 0.2) 100%);
+      height: 100%;
+      background: linear-gradient(180deg, rgb(70 144 120) 0%, rgba(0, 164, 255, 0.2) 100%);
     }
   }
   &--title {
@@ -94,6 +122,14 @@ const matchedLocales = images
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+  &--money {
+    font-size: 25px;
+    color: #fff;
+    position: absolute;
+    left: 15px;
+    bottom: 15px;
+    z-index: 10;
   }
 }
 </style>
