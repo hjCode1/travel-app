@@ -30,22 +30,24 @@ const locale: Locale[] = [
   { london: '영국', code: 'EUR' },
 ]
 
-const matchedLocales = images
-  .map((path: string) => {
-    const match = path.match(/bg_(\w+)\.jpg/)
-    const key = match ? match[1] : null
-    const localeEntry = locale.find((entry) => key && entry[key])
+const matchedLocales = computed(() => {
+  return images
+    .map((path: string) => {
+      const match = path.match(/bg_(\w+)\.jpg/)
+      const key = match ? match[1] : null
+      const localeEntry = locale.find((entry) => key && entry[key])
 
-    return {
-      img: path,
-      name: key && localeEntry ? localeEntry[key] : null,
-      code: key && localeEntry ? localeEntry.code : null,
-    }
-  })
-  .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      return {
+        img: path,
+        name: key && localeEntry ? localeEntry[key] : null,
+        code: key && localeEntry ? localeEntry.code : null,
+        detail: ref(false),
+      }
+    })
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+})
 
-const fetchEnable = ref(false)
-const url = `http://data.fixer.io/api/latest?access_key=adf51f266ba9950332b89cdf237fbe58`
+const url = `http://data.fixer.io/api/latest?access_key=${import.meta.env.VITE_FIXER_KEY}`
 
 const {
   isLoading,
@@ -55,9 +57,7 @@ const {
   queryKey: ['locale'],
   queryFn: async () => {
     const { data } = await useFetch(url)
-    // console.log('awiat', data)
     const exchangeRates = useExchangeRates(JSON.parse(data.value).rates, 'KRW', 1000)
-    // console.log('?', exchangeRates)
     const toFixedExchangeRates = Object.fromEntries(
       Object.entries(exchangeRates).map(([key, value]) => [key, parseFloat(value.toFixed(2))])
     )
@@ -67,15 +67,25 @@ const {
   // enabled: fetchEnable
 })
 
-console.log(matchedLocales)
+function showDetail(item) {
+  item.detail.value = true
+}
 </script>
 
 <template>
   <Loading v-if="isLoading" />
   <div v-if="!isLoading" class="container locale">
     <ul>
-      <li class="locale--card" v-for="item of matchedLocales" :key="item.img">
+      <li
+        :class="['locale--card', item.detail.value ? 'detail' : '']"
+        v-for="item of matchedLocales"
+        :key="item.img"
+        @click="showDetail(item)"
+      >
         <strong class="locale--title">{{ item.name }}</strong>
+        <button v-show="item.detail.value" @click.stop.prevent="item.detail.value = false" class="locale--close-btn">
+          X
+        </button>
         <span class="locale--money">{{ rates[item.code] }}</span>
         <img class="locale--img" :src="item.img" alt="" />
       </li>
@@ -96,6 +106,7 @@ console.log(matchedLocales)
     height: 200px;
     cursor: pointer;
     overflow: hidden;
+    transition: all 0.3s ease;
 
     &:after {
       content: '';
@@ -107,6 +118,15 @@ console.log(matchedLocales)
       width: 100%;
       height: 100%;
       background: linear-gradient(180deg, rgb(70 144 120) 0%, rgba(0, 164, 255, 0.2) 100%);
+      opacity: 0.7;
+    }
+    &.detail {
+      position: fixed;
+      top: 50%;
+      z-index: 20;
+      transform: translateY(-50%);
+      height: 70%;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 1);
     }
   }
   &--title {
@@ -116,6 +136,19 @@ console.log(matchedLocales)
     left: 15px;
     font-size: 30px;
     color: #fff;
+    font-weight: 100;
+  }
+  &--close-btn {
+    font-size: 30px;
+    color: #fff;
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    background: transparent;
+    border: 0;
+    box-shadow: 0;
+    z-index: 30;
+    cursor: pointer;
   }
   &--img {
     display: block;
