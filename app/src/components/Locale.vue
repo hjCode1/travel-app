@@ -2,6 +2,12 @@
 type Locale = {
   [key: string]: string
 }
+type MatchedLocale = {
+  img: string
+  name: string | null
+  code: string | null
+  detail: Ref<boolean>
+}
 
 const imageModules = import.meta.glob('/src/assets/images/*jpg', { eager: true })
 const images: string[] = []
@@ -30,7 +36,7 @@ const locale: Locale[] = [
   { london: '영국', code: 'EUR' },
 ]
 
-const matchedLocales = computed(() => {
+const matchedLocales = computed<MatchedLocale[]>(() => {
   return images
     .map((path: string) => {
       const match = path.match(/bg_(\w+)\.jpg/)
@@ -49,14 +55,13 @@ const matchedLocales = computed(() => {
 
 const url = `http://data.fixer.io/api/latest?access_key=${import.meta.env.VITE_FIXER_KEY}`
 
-const {
-  isLoading,
-  data: rates,
-  error,
-} = useQuery({
+const { isLoading, data: rates } = useQuery({
   queryKey: ['locale'],
   queryFn: async () => {
-    const { data } = await useFetch(url)
+    const { data } = await useFetch<string>(url)
+
+    if (!data.value) return null
+
     const exchangeRates = useExchangeRates(JSON.parse(data.value).rates, 'KRW', 1000)
     const toFixedExchangeRates = Object.fromEntries(
       Object.entries(exchangeRates).map(([key, value]) => [key, parseFloat(value.toFixed(2))])
@@ -67,7 +72,7 @@ const {
   // enabled: fetchEnable
 })
 
-function showDetail(item) {
+function showDetail(item: MatchedLocale) {
   item.detail.value = true
 }
 </script>
@@ -86,7 +91,7 @@ function showDetail(item) {
         <button v-show="item.detail.value" @click.stop.prevent="item.detail.value = false" class="locale--close-btn">
           X
         </button>
-        <span class="locale--money">{{ rates[item.code] }}</span>
+        <span class="locale--money">{{ rates && item.code && rates[item.code] }}</span>
         <img class="locale--img" :src="item.img" alt="" />
       </li>
     </ul>
